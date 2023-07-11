@@ -1,0 +1,43 @@
+{
+    "nodes": [
+        {
+            "arch": "x86_64",
+            "cpu": "2",
+            "disk": "20",
+            "mac": [
+                "24:6E:96:C2:B0:B8",
+                "24:6E:96:C2:B0:B9",
+                "3C:FD:FE:C1:9C:40",
+                "3C:FD:FE:C1:9C:41"
+            ],
+            "memory": "1024",
+            "name": "rhv-engine-000-test.example.com",
+            "pm_addr": "192.168.122.1",
+            "pm_password": "password",
+            "pm_type": "pxe_ipmitool",
+            "pm_user": "admin"
+        },
+        { },
+        { },
+        { },
+        { },
+        { },
+        {
+            "arch": "x86_64",
+            "cpu": "2",
+            "disk": "20",
+            "mac": [
+                "E4:43:4B:B2:7D:68",
+                "E4:43:4B:B2:7D:69",
+                "40:A6:B7:01:50:10",
+                "40:A6:B7:01:50:11"
+            ],
+            "memory": "1024",
+            "name": "rhv-host1-test.example.com",
+            "pm_addr": "192.168.122.1",
+            "pm_password": "password",
+            "pm_type": "pxe_ipmitool",
+            "pm_user": "admin"
+        }
+    ]
+}

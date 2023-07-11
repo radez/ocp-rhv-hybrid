@@ -1,0 +1,198 @@
+- name: Create temporary directory for inventory
+  tempfile:
+    state: directory
+  register: inventory_tempdir
+  when: inventory_hostname != 'localhost'
+
+- name: set fact for inv file
+  set_fact:
+    "{{ item.name }}": "{{ playbook_dir +  '/' + item.path if inventory_hostname == 'localhost' else inventory_tempdir.path + '/' + item.path }}"
+  with_items:
+    - { name: ocpinv_file, path: ocpinv.json }
+
+- name: check ocpinv file available
+  stat:
+      path: "{{ ocpinv_file }}"
+  register: st
+
+- name: Download ocpinv.json
+  block:
+    - uri:
+        url: "{{ alias.lab_url }}/cloud/{{ cloud_name }}_ocpinventory.json"
+        return_content: yes
+      register: response
+
+    - set_fact:
+        ocpinv_content: "{{ response.json }}"
+  when: lab_name == "alias"
+
+- name: Download ocpinv.json
+  block:
+    - uri:
+        url: "{{ scale.lab_url }}/cloud/{{ cloud_name }}_ocpinventory.json"
+        return_content: yes
+      register: response
+
+    - set_fact:
+        ocpinv_content: "{{ response.json }}"
+  when: lab_name == "scale"
+
+- name: create ocpinv.json file
+  copy:
+    dest: "{{ ocpinv_file }}"
+    content: "{{ ocpinv_content | to_nice_json }}"
+  when: not st.stat.exists
+
+- name: read inv env file
+  slurp:
+    src: "{{ ocpinv_file }}"
+  register: invfile
+
+- name: Create final inventory used for deployment
+  block:
+    - name: read inv env file
+      slurp:
+        src: "{{ ocpinv_file }}"
+      register: finalinv
+
+    - name: set inventory fact
+      set_fact:
+        ocpinv_content: "{{ finalinv['content'] | b64decode | from_json }}"
+
+- name: set engine fqdn & index
+  set_fact:
+    engine_fqdn: "{{ ocpinv_content.nodes[0].name }}"
+    engine_index: 0
+  when: engine_fqdn is not defined or engine_fqdn == ""
+
+- debug:
+    var: engine_fqdn
+
+- name: Set fact for empty zero ovirthost
+  set_fact:
+    ovirt_hosts: []
+    host_networks: []
+
+- name: set lab_vars
+  set_fact:
+    lab_vars: "{{ (lab_name == 'scale') | ternary(scale, alias) }}"
+  when: lab_name in ['scale', 'alias']
+
+- name: set lab_vars
+  set_fact:
+    lab_vars: "{{ (lab_name == 'local') | ternary(local, false) }}"
+  when: lab_name == 'local'
+
+- name: set provisioner hostname & index
+  set_fact:
+    provisioner_hostname: "{{ ocpinv_content.nodes[0].pm_addr | replace('mgmt-','') | replace('-drac', '') }}"
+    prov_index: 0
+  when: provisioner_hostname is not defined or provisioner_hostname == ""
+
+- name: set provisioner_type
+  set_fact:
+    provisioner_type: "{{ provisioner_hostname.split('.')[0].split('-')[-1] }}"
+
+- name: create ocpinv.json file
+  copy:
+    dest: "{{ ocpinv_file }}"
+    content: "{{ ocpinv_content | to_nice_json }}"
+  when: not st.stat.exists
+
+- name: set provisioner_vendor
+  set_fact:
+    provisioner_vendor: "{{ (provisioner_type in lab_vars['machine_types']['supermicro']) | ternary('supermicro', 'dell') }}"
+  when: lab_name in ['scale', 'alias']
+
+- name: Get the bm mac address on provisioner node
+  set_fact:
+    bm_mac: "{{ hostvars[groups['orchestration'][0]]['ocpinv_content']['nodes'][prov_index|int].mac[2] | lower }}"
+
+# Need to do this as the ansible facts per interface use the naming convention with _ and not -
+- name: Set eligible interfaces list
+  set_fact:
+    ansible_eligible_interfaces: "{{ ansible_eligible_interfaces | default([]) + [item | replace('-','_')] }}"
+  with_items:
+    - "{{ ansible_interfaces }}"
+
+# Remove vlaned interfaces from eligible list
+- name: Removing vlaned interfaces
+  set_fact:
+    ansible_eligible_interfaces: "{{ ansible_eligible_interfaces | reject('search', '[.]') | list }}"
+
+- name: Get the bm interface
+  set_fact:
+    bm_nic: "{{ item }}"
+  when: ansible_{{ item }}.macaddress is defined and ansible_{{ item}}.type == "ether" and ansible_{{ item }}.macaddress == bm_mac
+  with_items:
+    - "{{ ansible_eligible_interfaces }}"
+
+- name: set provisioner_vendor
+  set_fact:
+    provisioner_vendor: "local"
+  when: lab_name == 'local'
+
+- name: add ovirtengine to inventory file
+  add_host:
+    name: "{{ engine_fqdn }}"
+    groups: "ovirtengine"
+    ansible_host: "{{ engine_fqdn }}"
+    ansible_ssh_private_key_file: "{{ ansible_ssh_key }}"
+    ansible_user: "root"
+
+- name: add ovirthosts to inventory file
+  add_host:
+    name: "{{ item.name }}"
+    groups: "ovirthosts"
+    ansible_host: "{{ item.name }}"
+    ansible_ssh_private_key_file: "{{ ansible_ssh_key }}"
+    ansible_user: "root"
+  with_items: "{{ ocpinv_content.nodes[6:] }}"
+
+
+- name: define ovirt_hosts
+  set_fact:
+    ovirt_hosts: "{{ ovirt_hosts + [
+      { 'name': item.name,
+        'state': 'present',
+        'address': item.name,
+        'password': ansible_ssh_pass,
+        'cluster': data_center_name,
+        'power_management': {
+          'address': item.pm_addr,
+          'username': item.pm_user,
+          'password': item.pm_password,
+          'type': 'ipmilan'}
+      }] }}"
+  with_items: "{{ ocpinv_content.nodes[6:] }}"
+
+#- debug:
+#    msg: "{{ ocpinv_content.nodes[6].name }}"
+
+- name: define ovirt_host_networks
+  set_fact:
+    host_networks: "{{ host_networks + [
+      { 'name': item.name,
+        'check': true,
+        'save': true,
+        'interface': bm_nic,
+        'networks': [{
+          'name': 'baremetal',
+          'boot_protocol': 'dhcp'}]
+      },
+      { 'name': item.name,
+        'check': true,
+        'save': true,
+        'interface': lab_vars['machine_types'][provisioner_vendor][item.name.split('.')[0].split('-')[-1]]['prov_nic'],
+        'networks': [{
+          'name': 'provisioning',
+          'boot_protocol': 'dhcp'}]
+      }] }}"
+
+  with_items: "{{ ocpinv_content.nodes[6:] }}"
+
+- debug:
+    var: ovirt_hosts
+
+- debug:
+    var: host_networks

@@ -1,0 +1,10 @@
+---
+share: "/srv/data"
+options: "*(rw,insecure,no_root_squash)"
+permission: '0775'
+
+ovirt_engine_setup_version: '4.5'
+ovirt_engine_setup_organization: 'rhv.redhat.com'
+ovirt_engine_setup_product_type: 'rhv'
+
+ovirt_engine_setup_admin_password: password

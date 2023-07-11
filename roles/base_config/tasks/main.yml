@@ -1,0 +1,3 @@
+---
+- name: Configure corp repos
+  include_tasks: 10_configure_corp_repos.yml

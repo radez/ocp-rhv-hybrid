@@ -1,0 +1,12 @@
+---
+- name: Install Worker Template
+  include_tasks: 10_install_templates.yml
+  tags:
+    - worker_template
+    - resources
+
+- name: Create Worker VMs
+  include_tasks: 20_create_vms.yml
+  tags:
+    - create_vms
+    - resources

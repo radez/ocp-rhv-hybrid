@@ -1,0 +1,6 @@
+---
+- name: Install VDSM Hook on engine
+  include_tasks: 10_install_vdsm_hook.yml
+
+- name: Ensure Firewalld is Unmasked
+  include_tasks: 20_ensure_firewalld_unmasked.yml

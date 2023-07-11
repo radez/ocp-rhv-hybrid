@@ -1,0 +1,56 @@
+- name: make sure firewalld is not masked
+  command: systemctl unmask firewalld
+
+- name: Ensure firewalld is enabled
+  service:
+    name: firewalld
+    enabled: yes
+
+- name: start service firewalld, if not started
+  service:
+    name: firewalld
+    state: started
+
+- name: NFS server installed
+  ansible.builtin.dnf:
+    name:
+      - nfs-utils
+      - nfs4-acl-tools
+    state: present
+
+- name: share directory exists
+  ansible.builtin.file:
+    path: "{{ share }}"
+    state: directory
+    mode: "{{ permission }}"
+    owner: 36
+    group: 36
+
+- name: share in /etc/exports file
+  ansible.builtin.lineinfile:
+    path: /etc/exports
+    state: present
+    line: '{{ share }} {{ options }}'
+  notify: restart NFS server
+
+- name: export share
+  ansible.builtin.command: "exportfs -rav"
+
+- name: firewall enabled
+  ansible.posix.firewalld:
+    service: "{{ item }}"
+    state: enabled
+    permanent: true
+    immediate: true
+  with_items:
+    - nfs
+    - rpc-bind
+    - mountd
+
+- name: set ovirt_hosts
+  set_fact:
+    ovirt_hosts: "{{ hostvars['localhost']['ovirt_hosts'] }}"
+
+- name: set host_networks
+  set_fact:
+    host_networks: "{{ hostvars['localhost']['host_networks'] }}"

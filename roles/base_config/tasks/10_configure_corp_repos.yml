@@ -1,0 +1,39 @@
+- name: Download rhel_86_engine_x86.repo
+  ansible.builtin.get_url:
+    url: "{{ repo_api }}/rhel_86_engine_x86.repo"
+    dest: /etc/yum.repos.d/rhel_86_engine_x86.repo
+  when: '"ovirtengine" in group_names'
+
+- name: Download rhv_45_engine_x86.repo
+  ansible.builtin.get_url:
+    url: "{{ repo_api }}/rhv_45_engine.repo"
+    dest: /etc/yum.repos.d/rhv_45_engine.repo
+  when: '"ovirtengine" in group_names'
+
+- name: Download rhel_86_host.repo
+  ansible.builtin.get_url:
+    url: "{{ repo_api }}/rhel_86_host_x86.repo"
+    dest: /etc/yum.repos.d/rhel_86_host.repo
+  when: '"ovirthosts" in group_names'
+
+- name: Download rhv_45_host.repo
+  ansible.builtin.get_url:
+    url: "{{ repo_api }}/rhv_45_host.repo"
+    dest: /etc/yum.repos.d/rhv_45_host.repo
+  when: '"ovirthosts" in group_names'
+
+- name: Install the 2015 RH internal CA Cert
+  ansible.builtin.get_url:
+    url: "https://certs.corp.redhat.com/certs/2015-IT-Root-CA.pem"
+    dest: /etc/pki/ca-trust/source/anchors/
+
+- name: Install the 2022 RH internal CA Cert
+  ansible.builtin.get_url:
+    url: "https://certs.corp.redhat.com/certs/2022-IT-Root-CA.pem"
+    dest: /etc/pki/ca-trust/source/anchors/
+
+- name: Update CA trust
+  command: "update-ca-trust force-enable"
+
+- name: Enable dnf modules
+  command: "dnf module enable -y {{ ovirt_repositories_ovirt_dnf_modules | join(' ') }}"

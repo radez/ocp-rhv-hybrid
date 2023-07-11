@@ -1,0 +1,9 @@
+- ovirt.ovirt.ovirt_vm:
+    state: present
+    cluster: Default
+    name: "{{ 'worker-%03d' | format(item) }}"
+    template: worker
+    auth: "{{ ovirt_auth }}"
+  async: 120
+  poll: 0
+  loop: "{{ range(1, worker_vm_count + 1)|list }}"

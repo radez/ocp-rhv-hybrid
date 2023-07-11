@@ -1,0 +1,37 @@
+- ovirt.ovirt.ovirt_vm:
+    state: present
+    cluster: "{{ data_center_name }}"
+    name: worker_template
+    cpu_cores: 4
+    memory: 8GiB
+    type: server
+    storage_domain: data
+    nics:
+      - name: nic1
+        profile_name: provisioning
+      - name: nic2
+        profile_name: baremetal
+    auth: "{{ ovirt_auth }}"
+
+- ovirt.ovirt.ovirt_disk:
+    name: worker_template_disk
+    vm_name: worker_template
+    size: 15GiB
+    format: cow
+    interface: virtio
+    sparse: true
+    storage_domain: data
+    auth: "{{ ovirt_auth }}"
+
+# Register template
+- ovirt.ovirt.ovirt_template:
+    cluster: "{{ data_center_name }}"
+    name: worker
+    vm: worker_template
+    auth: "{{ ovirt_auth }}"
+
+- ovirt.ovirt.ovirt_vm:
+    state: absent
+    cluster: "{{ data_center_name }}"
+    name: worker_template
+    auth: "{{ ovirt_auth }}"

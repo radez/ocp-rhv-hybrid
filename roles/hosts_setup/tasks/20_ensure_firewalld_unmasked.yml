@@ -1,0 +1,8 @@
+- name: make sure firewalld is not masked
+  command: systemctl unmask firewalld
+
+- name: Ensure firewalld is enabled
+  service:
+    name: firewalld
+    enabled: yes
+

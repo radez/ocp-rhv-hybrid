@@ -1,0 +1,46 @@
+---
+- name: 'OCP Hybrid Sideload: OVirt VM workers + OCP 3+2BM on Red Hat Shared Labs'
+  hosts: orchestration
+  roles:
+    - { role: build_inventory, tags: "always" }
+
+- hosts: ovirtengine:ovirthosts
+  roles:
+    - { role: base_config }
+
+- hosts: ovirtengine
+  roles:
+    - { role: engine_config }
+    - { role: engine_setup }
+  collections:
+    - ovirt.ovirt
+
+- hosts: ovirthosts
+  roles:
+    - { role: hosts_setup }
+
+- hosts: ovirtengine
+  pre_tasks:
+    - name: Login to oVirt
+      ovirt_auth:
+        hostname: "{{ hostvars['localhost']['engine_fqdn'] }}"
+        username: "{{ engine_user }}"
+        password: "{{ engine_password }}"
+        ca_file: "{{ engine_cafile | default(omit) }}"
+        insecure: "{{ engine_insecure | default(true) }}"
+      tags:
+        - always
+
+  roles:
+    - { role: infra, tags: ["postinstall", "infra"] }
+    - { role: engine_resources, tags: ["resources", "worker_template", "create_vms"] }
+  collections:
+    - ovirt.ovirt
+
+  post_tasks:
+    - name: Logout from oVirt
+      ovirt_auth:
+        state: absent
+        ovirt_auth: "{{ ovirt_auth }}"
+      tags:
+        - always

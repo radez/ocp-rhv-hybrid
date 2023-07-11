@@ -1,0 +1,5 @@
+- name: Install vdsm-hook-localdisk
+  ansible.builtin.dnf:
+    name:
+      - vdsm-hook-localdisk
+    state: present

@@ -1,0 +1,58 @@
+# Your allocation name/number in the shared labs
+cloud_name: cloud00
+# Lab name, typically can be alias or scale or local
+lab_name: local
+# Default root password to your nodes in the lab allocation so that keys can be added automatically for ansible to run
+ansible_ssh_pass: password
+# Location of the private key of the user running the ansible playbook, leave default
+ansible_ssh_key: "{{ ansible_user_dir }}/.ssh/id_rsa"
+# set to true only if you requested a public routable VLAN for your cloud in scale lab
+routable_api: false
+# How many worker vms will be created
+worker_vm_count: 5
+
+
+
+repo_api: http://hostname.example.com/builds/ovirt/api/
+ovirt_repositories_ovirt_dnf_modules: ["pki-deps", "postgresql:12"]
+
+engine_user: admin@internal
+engine_password: password
+engine_cafile: /etc/pki/ovirt-engine/ca.pem
+data_center_name: Default
+compatibility_version: 4.4
+hosts_var_name: ovirt_hosts
+
+storages:
+  data:
+    master: true
+    state: present
+    nfs:
+      address: "{{ hostvars['localhost']['engine_fqdn'] }}"
+      path: /srv/data
+
+local:
+  machine_types:
+    local:
+      test:
+        pub_nic: enp7s0
+        prov_nic: enp8s0
+
+logical_networks:
+  - name: provisioning
+    clusters:
+      - name: "{{ data_center_name }}"
+        assigned: yes
+        required: no
+        display: no
+        migration: yes
+        gluster: no
+
+  - name: baremetal
+    clusters:
+      - name: "{{ data_center_name }}"
+        assigned: yes
+        required: no
+        display: no
+        migration: yes
+        gluster: no
