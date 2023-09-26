@@ -1,0 +1,21 @@
+---
+- name: Setting facts so that they will be persisted in the fact cache
+  ansible.builtin.set_fact:
+    worker: "{{ 'worker-%03d' | format(item) }}"
+    rhv_worker: "{{ 'rhv-worker-%03d' | format(item) }}"
+
+- ovirt.ovirt.ovirt_vm_info:
+    pattern: name={{ worker }}
+    follow: ['nics']
+    auth: "{{ ovirt_auth }}"
+  register: result
+
+- ansible.builtin.debug:
+    msg: "{{ result.ovirt_vms }}"
+
+- name: Ensure MAC is present for dnsmasq config
+  ansible.builtin.lineinfile:
+    path: /etc/dnsmasq.d/workers.conf
+    regexp: "{{ rhv_worker }}"
+    line: "dhcp-host={{ result.ovirt_vms[0].nics[1].mac.address }},,{{ rhv_worker }}"
+    create: true

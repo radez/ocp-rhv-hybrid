@@ -7,3 +7,19 @@
   async: 120
   poll: 0
   loop: "{{ range(1, worker_vm_count + 1)|list }}"
+  register: create_vms
+
+- name: Wait for VM create to finish
+  async_status:
+    jid: "{{ create_vms_item.ansible_job_id }}"
+  loop: "{{ create_vms.results }}"
+  loop_control:
+    loop_var: "create_vms_item"
+  register: create_vms_results
+  until: create_vms_results.finished
+  retries: 100
+  delay: 10
+
+- name: Adding VMs to dnsmasq
+  include_tasks: roles/engine_resources/tasks/20_create_vms__dnsmasq_loop.yml
+  loop: "{{ range(1, worker_vm_count + 1)|list }}"

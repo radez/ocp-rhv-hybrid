@@ -1,3 +1,8 @@
 ---
-- name: Install NFS server on engine
+- name: Install & configure NFS server on engine
   include_tasks: 10_setup_nfs_server.yml
+
+- name: Install dnsmasq
+  ansible.builtin.package:
+    name: dnsmasq
+    state: present
