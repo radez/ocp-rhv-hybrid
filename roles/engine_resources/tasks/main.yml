@@ -1,4 +1,8 @@
 ---
+- name: set ocpinv_content
+  set_fact:
+    ocpinv_content: "{{ hostvars['localhost']['ocpinv_content'] }}"
+
 - name: Install Worker Template
   include_tasks: 10_install_templates.yml
   tags:
@@ -9,4 +13,10 @@
   include_tasks: 20_create_vms.yml
   tags:
     - create_vms
+    - resources
+
+- name: Create Worker VBMCs
+  include_tasks: 30_create_vbmcs.yml
+  tags:
+    - create_vbmcs
     - resources

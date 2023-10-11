@@ -1,0 +1,41 @@
+- name: "Generate vbmc iplist"
+  set_fact:
+    iplist: |-
+       {%- for item in range(1, worker_vm_count + 1)|list -%}{% if item > 1 %},{% endif %}172.16.1.{{ item }}/24{%- endfor -%}
+
+- name: Create Bridge labeled baremetal for ipv4
+  nmcli:
+    conn_name: "baremetal"
+    type: bridge
+    ifname: "baremetal"
+    autoconnect: yes
+    stp: off
+    state: present
+
+- name: Add vbmc addresses to baremetal network
+  community.general.nmcli:
+    conn_name: baremetal
+    ifname: baremetal
+    type: ethernet
+    ip4: "{{ iplist }}"
+    state: present
+
+- name: Bring up the changes on the baremetal interface
+  shell: "nmcli con up id baremetal"
+  register: nmcli_con_cmd_result
+
+- name: ensure vmbc is cloned
+  ansible.builtin.git:
+    repo: 'https://github.com/oVirt/vbmc.git'
+    dest: /root/vbmc
+    update: no
+
+- name: Install specified python requirements
+  ansible.builtin.pip:
+    requirements: /root/vbmc/requirements.txt
+
+- name: Start ovirtbmc processes
+  shell:
+    chdir: "/root"
+    cmd: "nohup vbmc/ovirtbmc.py --vm {{ 'worker-%03d' | format(item) }} --address 172.16.1.{{ item }} --engine-fqdn {{ ocpinv_content.nodes[0].name }} --engine-username admin@internal --engine-password password 2>&1 >> /var/log/ovirtbmc.log &"
+  loop: "{{ range(1, worker_vm_count + 1)|list }}"
